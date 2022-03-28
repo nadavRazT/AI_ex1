@@ -11,6 +11,7 @@ class SearchProblem:
     any of the methods (in object-oriented terminology: an abstract class).
 
     You do not need to change anything in this class, ever.
+    hi
     """
 
     def get_start_state(self):
