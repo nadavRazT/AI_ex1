@@ -3,6 +3,8 @@ In search.py, you will implement generic search algorithms
 """
 
 import util
+from displays import GuiDisplay
+import time
 
 
 class SearchProblem:
@@ -11,7 +13,6 @@ class SearchProblem:
     any of the methods (in object-oriented terminology: an abstract class).
 
     You do not need to change anything in this class, ever.
-    hi
     """
 
     def get_start_state(self):
@@ -50,6 +51,17 @@ class SearchProblem:
         util.raiseNotDefined()
 
 
+def dfs_helper(node, visited, problem, display):
+    board = node
+    dots = [(board.board_h - 1, board.board_w - 1), (0, board.board_w - 1), (board.board_h - 1, 0)]
+    display.draw_board(board, dots=dots)
+    time.sleep(0.3)
+    display.draw_background()
+
+    for son in problem.get_successors(node):
+        # check legal
+        if son is not None or son[0] not in visited :
+            dfs_helper(son[0], visited, problem, display)
 
 
 def depth_first_search(problem):
@@ -62,11 +74,20 @@ def depth_first_search(problem):
     To get started, you might want to try some of these simple commands to
     understand the search problem that is being passed in:
 
-	print("Start:", problem.get_start_state().state)
     print("Is the start a goal?", problem.is_goal_state(problem.get_start_state()))
     print("Start's successors:", problem.get_successors(problem.get_start_state()))
     """
-    "*** YOUR CODE HERE ***"
+
+    state = problem.get_start_state()
+    stack = [state]
+    visited = set().add(state)
+    print("start state: ", state.state)
+    start_state = state
+    display = GuiDisplay(problem.board.board_w, problem.board.board_h, title='Intro to AI -- 67842 -- Ex1')
+
+    dfs_helper(start_state, visited, problem, display)
+
+
     util.raiseNotDefined()
 
 
