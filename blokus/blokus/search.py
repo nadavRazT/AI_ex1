@@ -135,19 +135,25 @@ def uniform_cost_search(problem):
     """
     Search the node of least total cost first.
     """
-    p_queue = util.PriorityQueue
+    p_queue = util.PriorityQueue()
     start_state = problem.get_start_state()
     visited = [start_state]
-    p_queue.push([(start_state, None)], 0)
+    p_queue.push(item=[(start_state, None,0)], priority=0)
     while not p_queue.isEmpty():
         path = p_queue.pop()
-        if not path:
-            return False, path
         for son in problem.get_successors(path[-1][0]):
             if problem.is_goal_state(son[0]):
-                return True, path
-            if son and path[-1][0] not in visited:
+                return path
+            if son and son[0] not in visited:
                 visited.append(path[-1][0])
+                node = (son[0], son[1], son[2] + path[-1][2])
+                new_path = list(path)
+                new_path.append(node)
+                p_queue.push(item=new_path, priority=new_path[-1][2])
+    return []
+
+
+
 
 
     "*** YOUR CODE HERE ***"
