@@ -51,17 +51,30 @@ class SearchProblem:
         util.raiseNotDefined()
 
 
-def dfs_helper(node, visited, problem, display):
-    board = node
+def draw_b(board, display):
+    # todo delete
     dots = [(board.board_h - 1, board.board_w - 1), (0, board.board_w - 1), (board.board_h - 1, 0)]
     display.draw_board(board, dots=dots)
-    time.sleep(0.3)
-    display.draw_background()
+    input("press Enter: ")
 
-    for son in problem.get_successors(node):
+
+def dfs_helper(node, visited, problem, stack, sol):
+    board = node
+    for son in reversed(problem.get_successors(node)):
+        stack.append(son)
+        sol.append(son[1])
+        if problem.is_goal_state(son[0]):
+            return True, sol
         # check legal
-        if son is not None or son[0] not in visited :
-            dfs_helper(son[0], visited, problem, display)
+        state = son[0]
+        if son is not None and state not in visited:
+            visited.append(state)
+            sol_flag, sol = dfs_helper(son[0], visited, problem, stack, sol)
+            if sol_flag:
+                return True, sol
+        stack.pop()
+        sol.pop()
+    return False, sol
 
 
 def depth_first_search(problem):
@@ -78,17 +91,15 @@ def depth_first_search(problem):
     print("Start's successors:", problem.get_successors(problem.get_start_state()))
     """
 
-    state = problem.get_start_state()
-    stack = [state]
-    visited = set().add(state)
-    print("start state: ", state.state)
-    start_state = state
-    display = GuiDisplay(problem.board.board_w, problem.board.board_h, title='Intro to AI -- 67842 -- Ex1')
-
-    dfs_helper(start_state, visited, problem, display)
-
-
-    util.raiseNotDefined()
+    start_state = problem.get_start_state()
+    stack = []
+    visited = [start_state]
+    # display = GuiDisplay(problem.board.board_w, problem.board.board_h, title='Intro to AI -- 67842 -- Ex1')
+    sol = []
+    sol_flag, sol = dfs_helper(start_state, visited, problem, stack, sol)
+    if sol_flag:
+        return sol
+    return None
 
 
 def breadth_first_search(problem):
@@ -121,7 +132,6 @@ def a_star_search(problem, heuristic=null_heuristic):
     """
     "*** YOUR CODE HERE ***"
     util.raiseNotDefined()
-
 
 
 # Abbreviations
