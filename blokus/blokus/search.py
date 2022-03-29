@@ -58,7 +58,7 @@ def draw_b(board, display):
     input("press Enter: ")
 
 
-def dfs_helper(node, visited, problem, stack, sol):
+def dfs_helper(node, visited_set,problem, stack, sol):
     for son in reversed(problem.get_successors(node)):
         if not son:
             return False, sol
@@ -68,9 +68,9 @@ def dfs_helper(node, visited, problem, stack, sol):
             return True, sol
         # check legal
         state = son[0]
-        if state not in visited:
-            visited.append(state)
-            sol_flag, sol = dfs_helper(son[0], visited, problem, stack, sol)
+        if hash(state) not in visited_set:
+            visited_set.add(hash(state))
+            sol_flag, sol = dfs_helper(son[0], visited_set, problem, stack, sol)
             if sol_flag:
                 return True, sol
         stack.pop()
@@ -94,10 +94,10 @@ def depth_first_search(problem):
 
     start_state = problem.get_start_state()
     stack = []
-    visited = [start_state]
+    visited_set = {hash(start_state)}
     # display = GuiDisplay(problem.board.board_w, problem.board.board_h, title='Intro to AI -- 67842 -- Ex1')
     sol = []
-    sol_flag, sol = dfs_helper(start_state, visited, problem, stack, sol)
+    sol_flag, sol = dfs_helper(start_state, visited_set, problem, stack, sol)
     if sol_flag:
         return sol
     return sol
@@ -107,10 +107,8 @@ def breadth_first_search(problem):
     """
     Search the shallowest nodes in the search tree first.
     """
-    # todo devide bfs to functions
-    visited = []
     queue = []
-    visited.append(problem.get_start_state())
+    visited_set = {hash(problem.get_start_state())}
     first_in_q = [(problem.get_start_state(), 0)]
     queue.append(first_in_q)
     ret = []
@@ -123,12 +121,13 @@ def breadth_first_search(problem):
             return ret
         for neighbour in problem.get_successors(s[0]):
             neighboard = neighbour[0]
-            if neighboard not in visited:
-                visited.append(neighboard)
+            if hash(neighboard) not in visited_set:
+                visited_set.add(hash(neighboard))
                 new_path = list(path)
                 new_path.append(neighbour)
                 queue.append(new_path)
     return ret
+
 
 def get_move_list(path, visited):
     return [visited[i][1] for i in path]
