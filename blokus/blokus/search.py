@@ -59,15 +59,16 @@ def draw_b(board, display):
 
 
 def dfs_helper(node, visited, problem, stack, sol):
-    board = node
     for son in reversed(problem.get_successors(node)):
+        if not son:
+            return False, sol
         stack.append(son)
         sol.append(son[1])
         if problem.is_goal_state(son[0]):
             return True, sol
         # check legal
         state = son[0]
-        if son is not None and state not in visited:
+        if state not in visited:
             visited.append(state)
             sol_flag, sol = dfs_helper(son[0], visited, problem, stack, sol)
             if sol_flag:
@@ -99,23 +100,59 @@ def depth_first_search(problem):
     sol_flag, sol = dfs_helper(start_state, visited, problem, stack, sol)
     if sol_flag:
         return sol
-    return None
+    return sol
 
 
 def breadth_first_search(problem):
     """
     Search the shallowest nodes in the search tree first.
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # todo devide bfs to functions
+    visited = []
+    queue = []
+    visited.append(problem.get_start_state())
+    first_in_q = [(problem.get_start_state(), 0)]
+    queue.append(first_in_q)
+    ret = []
+    while queue:
+        path = queue.pop(0)
+        s = path[-1]                        #
+        if problem.is_goal_state(s[0]):
+            path.pop(0)
+            ret = [tup[1] for tup in path]
+            return ret
+        for neighbour in problem.get_successors(s[0]):
+            neighboard = neighbour[0]
+            if neighboard not in visited:
+                visited.append(neighboard)
+                new_path = list(path)
+                new_path.append(neighbour)
+                queue.append(new_path)
+    return ret
 
 
 def uniform_cost_search(problem):
     """
     Search the node of least total cost first.
     """
+    p_queue = util.PriorityQueue
+    start_state = problem.get_start_state()
+    visited = [start_state]
+    p_queue.push([(start_state, None)], 0)
+    while not p_queue.isEmpty():
+        path = p_queue.pop()
+        if not path:
+            return False, path
+        for son in problem.get_successors(path[-1][0]):
+            if problem.is_goal_state(son[0]):
+                return True, path
+            if son and path[-1][0] not in visited:
+                visited.append(path[-1][0])
+
+
     "*** YOUR CODE HERE ***"
     util.raiseNotDefined()
+    return None
 
 
 def null_heuristic(state, problem=None):
