@@ -130,6 +130,9 @@ def breadth_first_search(problem):
                 queue.append(new_path)
     return ret
 
+def get_move_list(path, visited):
+    return [visited[i][1] for i in path]
+
 
 def uniform_cost_search(problem):
     """
@@ -137,28 +140,28 @@ def uniform_cost_search(problem):
     """
     p_queue = util.PriorityQueue()
     start_state = problem.get_start_state()
-    visited = [start_state]
-    p_queue.push(item=[(start_state, None,0)], priority=0)
+    visited = [(start_state, None, 0)]
+    visited_set = {hash((start_state, None, 0)): 0}
+    state_set = {hash((start_state, None, 0)): [0]}
+    p_queue.push(item=hash((start_state, None, 0)), priority=0)
     while not p_queue.isEmpty():
-        path = p_queue.pop()
-        for son in problem.get_successors(path[-1][0]):
-            if problem.is_goal_state(son[0]):
-                return path
-            if son and son[0] not in visited:
-                visited.append(path[-1][0])
-                node = (son[0], son[1], son[2] + path[-1][2])
+        path = state_set[p_queue.pop()]
+        node = visited[path[-1]]
+        for son in problem.get_successors(node[0]):
+            if son and hash(son) not in visited_set.keys():
+                n = len(visited)
+                cost = son[2] + node[2]
+                son_node = (son[0], son[1], cost)
+                visited.append(son_node)
+                visited_set[hash(son_node)] = 0
                 new_path = list(path)
-                new_path.append(node)
-                p_queue.push(item=new_path, priority=new_path[-1][2])
+                new_path.append(n)
+                state_set[hash(son_node)] = new_path
+                p_queue.push(item=hash(son_node), priority=cost)
+            if problem.is_goal_state(son[0]):
+                sol = get_move_list(new_path, visited)[1:]
+                return sol
     return []
-
-
-
-
-
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    return None
 
 
 def null_heuristic(state, problem=None):
