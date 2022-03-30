@@ -1,6 +1,9 @@
 """
 In search.py, you will implement generic search algorithms
 """
+from collections import defaultdict
+
+import numpy as np
 
 import util
 from displays import GuiDisplay
@@ -171,13 +174,40 @@ def null_heuristic(state, problem=None):
     return 0
 
 
+def reconstruct_path(hash_path, state_set):
+    return [state_set[h][1] for h in hash_path]
+
+
 def a_star_search(problem, heuristic=null_heuristic):
     """
     Search the node that has the lowest combined cost and heuristic first.
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-
+    g_score, f_score = {}, {}
+    g_score, f_score = defaultdict(lambda: np.inf, g_score), defaultdict(lambda: np.inf, f_score)
+    openset = util.PriorityQueue()
+    start = (problem.get_start_state(),None, 0)
+    hashed_openset = {start}
+    g_score[start[0]] = 0
+    f_score[start[0]] = heuristic(start, problem)
+    openset.push([hash(start)], f_score[start[0]])
+    state_set = {hash(start): start}
+    while openset:
+        hash_path = openset.pop()
+        curr = state_set[hash_path[-1]]
+        if problem.is_goal_state(curr[0]):
+            return reconstruct_path(hash_path[1:], state_set)
+        for neighbor in problem.get_successors(curr[0]):
+            state_set[hash(neighbor)] = neighbor
+            tent_g_score = g_score[curr[0]] + neighbor[2]
+            if tent_g_score < g_score[neighbor[0]]:
+                g_score[neighbor[0]] = tent_g_score
+                f_score[neighbor[0]] = tent_g_score + heuristic(neighbor[0], problem)
+                if hash(neighbor) not in hashed_openset:
+                    hashed_openset.add(hash(neighbor))
+                    new_path = list(hash_path)
+                    new_path.append(hash(neighbor))
+                    openset.push(new_path, f_score[neighbor[0]])
+    return None
 
 # Abbreviations
 bfs = breadth_first_search
