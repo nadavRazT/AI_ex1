@@ -38,7 +38,7 @@ class SearchProblem:
 
         For a given state, this should return a list of triples,
         (successor, action, stepCost), where 'successor' is a
-        successor to the current state, 'action' is the action
+        successor to the current_ state, 'action' is the action
         required to get there, and 'stepCost' is the incremental
         cost of expanding to that successor
         """
@@ -184,11 +184,12 @@ def a_star_search(problem, heuristic=null_heuristic):
     """
     g_score, f_score = {}, {}
     g_score, f_score = defaultdict(lambda: np.inf, g_score), defaultdict(lambda: np.inf, f_score)
-    openset = util.PriorityQueue()
     start = (problem.get_start_state(),None, 0)
+    openset = util.PriorityQueue()
     hashed_openset = {start}
+
     g_score[start[0]] = 0
-    f_score[start[0]] = heuristic(start, problem)
+    f_score[start[0]] = heuristic(start[0], problem)
     openset.push([hash(start)], f_score[start[0]])
     state_set = {hash(start): start}
     while openset:

@@ -104,6 +104,9 @@ def play_simple_search(problem, search_func):
     for action in back_trace:
         board.add_move(0, action)
         display.draw_board(board, dots=dots)
+        # todo remove
+        import time
+        time.sleep(0.3)
     print("Expanded nodes: %d, score: %d" % (problem.expanded, board.score(0)))
 
 
@@ -123,6 +126,8 @@ def play_a_star_search(problem, heuristic):
     for action in back_trace:
         board.add_move(0, action)
         display.draw_board(board, dots=dots)
+        import time
+        time.sleep(0.3)
     print("Expanded nodes: %d, score: %d" % (problem.expanded, board.score(0)))
 
 
