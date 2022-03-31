@@ -195,6 +195,55 @@ def optimal_distance(xy1, xy2, valid_pieces):
     return np.linalg.norm(np.array(xy1) - np.array(xy2))
 
 
+def get_corners(state):
+    corners = []
+    for y in range(state.board_h):
+        for x in range(state.board_w):
+            if state.check_tile_attached(0, x, y):
+                corners.append((x, y))
+    return corners
+
+
+def closest_corner_distance(state_corners, target):
+    euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
+    val = min(state_corners, key=euk_dist_from_target)
+    return euk_dist_from_target(val)
+
+
+def is_point_in_board(state, x, y):
+    if x >= 0 and x < state.board_w and y >= 0 and y < state.board_h:
+        return True
+    return False
+
+
+def is_kissing(board, targets):
+    flag = False
+    for target in targets:
+        curr_x = target[1]
+        curr_y = target[0]
+        flag = False
+        if board.get_position(curr_x, curr_y) != EMPTY:
+            return flag
+
+        if is_point_in_board(board, curr_x + 1, curr_y + 1):
+            if not board.get_position(curr_x + 1, curr_y + 1):
+                flag = True
+
+        if is_point_in_board(board, curr_x - 1, curr_y + 1):
+            if not board.get_position(curr_x - 1, curr_y + 1):
+                flag = True
+
+        if is_point_in_board(board, curr_x + 1, curr_y - 1):
+            if not board.get_position(curr_x + 1, curr_y - 1):
+                flag = True
+
+        if is_point_in_board(board, curr_x - 1, curr_y - 1):
+            if not board.get_position(curr_x - 1, curr_y - 1):
+                flag = True
+
+    return flag
+
+
 def blokus_corners_heuristic(state, problem):
     """
     Your heuristic for the BlokusCornersProblem goes here.
@@ -209,29 +258,24 @@ def blokus_corners_heuristic(state, problem):
     """
     board_w = state.board_w
     board_h = state.board_h
-    corners = [(board_h - 1, 0), (board_h - 1, board_w - 1), (0, board_w)]
+    corners = [(board_h - 1, 0), (board_h - 1, board_w - 1), (0, board_w - 1)]
     cost = 0
-    valid_pieces = list()
-    order_piece(state, valid_pieces)
+    if problem.is_goal_state(state):
+        return -state.score(0)
+    if is_kissing(state, corners):
+        return np.inf
+    max_min_dist = 0
+    cost = 0
     for corner in corners:
-        min = np.inf
-        for y in range(board_h):
-            for x in range(board_w):
-                if state.check_tile_attached(0, x, y):
-                    # d = util.manhattanDistance((x,y), corner)
-                    d = optimal_distance((x, y), corner, valid_pieces)
-                    if min > d:
-                        min = d
-        cost += min
-    return cost
+        if state.get_position(corner[1], corner[0]) != EMPTY:
+            continue
+        state_corners = get_corners(state)
+        min_dist = closest_corner_distance(state_corners, corner)
+        cost += min_dist
+        if min_dist < max_min_dist:
+            max_min_dist = min_dist
 
-
-def blokus_corners_heuristic_test(state, problem):
-    sons = problem.get_successors(state)
-    if not sons:
-        return 0
-    min_son = min(sons, key=calc_piece_val)
-    return calc_piece_val(min_son)
+    return max_min_dist
 
 
 class BlokusCoverProblem(SearchProblem):
@@ -336,23 +380,22 @@ class ClosestLocationSearch:
 
     def _closest_corner_distance(self, target):
         euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
-        return min(self.current_corners, key=euk_dist_from_target)
+        val = min(self.current_corners, key=euk_dist_from_target)
+        return euk_dist_from_target(val)
 
-    def _closest_corner_distance_state(self,state, target):
+    def _closest_corner_distance_state(self, state, target):
         corners = self._get_corners(state)
         euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
         return euk_dist_from_target(min(corners, key=euk_dist_from_target))
-
 
     def _is_point_in_board(self, x, y):
         if x >= 0 and x < self.board_w and y >= 0 and y < self.board_h:
             return True
         return False
 
-
-    def _is_kissing(self, board):
+    def _is_kissing(self, board, targets):
         flag = False
-        for target in self.targets:
+        for target in targets:
             curr_x = target[1]
             curr_y = target[0]
             flag = False
@@ -377,7 +420,6 @@ class ClosestLocationSearch:
 
         return flag
 
-
     def move_to_next_target(self, board, target):
         if board.state[target[0]][target[1]] != EMPTY:
             return []
@@ -389,7 +431,8 @@ class ClosestLocationSearch:
             action = 0
             min_dist = np.inf
             for neighbor in neighbors:
-                if self._is_kissing(neighbor[0]):
+                all_targets = self.targets + [target]
+                if self._is_kissing(neighbor[0], all_targets):
                     continue
                 if neighbor[0].state[target[0]][target[1]] != EMPTY:
                     action = neighbor[1]
@@ -402,7 +445,6 @@ class ClosestLocationSearch:
             board.add_move(0, action)
             actions.append(action)
         return actions
-
 
     def solve(self):
         """

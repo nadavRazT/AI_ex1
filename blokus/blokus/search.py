@@ -192,12 +192,15 @@ def a_star_search(problem, heuristic=null_heuristic):
     f_score[start[0]] = heuristic(start[0], problem)
     openset.push([hash(start)], f_score[start[0]])
     state_set = {hash(start): start}
+    n = 0
+
     while openset:
         hash_path = openset.pop()
         curr = state_set[hash_path[-1]]
         if problem.is_goal_state(curr[0]):
             return reconstruct_path(hash_path[1:], state_set)
-        for neighbor in problem.get_successors(curr[0]):
+        neighbors = problem.get_successors(curr[0])
+        for neighbor in neighbors:
             state_set[hash(neighbor)] = neighbor
             tent_g_score = g_score[curr[0]] + neighbor[2]
             if tent_g_score < g_score[neighbor[0]]:
