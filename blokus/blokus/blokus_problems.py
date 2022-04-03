@@ -3,6 +3,7 @@ import numpy as np
 from board import Board
 from search import SearchProblem, ucs
 import util
+import search
 
 EMPTY = -1
 
@@ -160,26 +161,14 @@ def blokus_cover_heuristic(state, problem):
     util.raiseNotDefined()
 
 
-def calc_piece_val(piece):
+def calc_piece_size(piece):
     # piece = son[1].piece
     x_list = piece.x
     y_list = piece.y
     n = piece.num_tiles
     w = max(x_list) - min(x_list) + 1
     h = max(y_list) - min(y_list) + 1
-    d = np.sqrt(w ^ 2 + h ^ 2)
-    return n / d
-
-
-def order_piece(state, valid_pieces):
-    pieces = state.pieces
-    piece_list = state.piece_list
-    for i in range(len(pieces)):
-        if not pieces[0][i]:
-            continue
-        valid_pieces.append(piece_list.get_piece(i))
-    valid_pieces.sort(key=calc_piece_val)
-    return
+    return max(w, h), min(w, h)
 
 
 def optimal_distance(xy1, xy2, valid_pieces):
@@ -199,15 +188,20 @@ def get_corners(state):
     corners = []
     for y in range(state.board_h):
         for x in range(state.board_w):
-            if state.check_tile_attached(0, x, y):
+            if state.check_tile_legal(0, x, y) and state.check_tile_attached(0, x, y):
                 corners.append((x, y))
     return corners
 
 
-def closest_corner_distance(state_corners, target):
+def closest_corner(state_corners, target):
     euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
     val = min(state_corners, key=euk_dist_from_target)
-    return euk_dist_from_target(val)
+    return val
+
+
+def closest_corner_distance(state_corners, target):
+    euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
+    return euk_dist_from_target(closest_corner(state_corners, target))
 
 
 def is_point_in_board(state, x, y):
@@ -244,6 +238,41 @@ def is_kissing(board, targets):
     return flag
 
 
+def sort_corners(state_corners, target):
+    euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
+    state_corners.sort(key=euk_dist_from_target)
+    return
+
+
+def check_rect_valid(state, target, c_corner):
+    x_dif = abs(c_corner[1] - target[1])
+    y_dif = abs(c_corner[0] - target[0])
+    big = max(x_dif, y_dif) + 1
+    small = min(y_dif, x_dif) + 1
+    pieces = state.pieces
+    piece_list = state.piece_list
+    for i in range(len(pieces)):
+        if not pieces[0][i]:
+            continue
+        p_big, p_small = calc_piece_size(piece_list.get_piece(i))
+        if big >= p_big and small >= p_small:
+            return True
+    return False
+
+
+def get_min_piece_size(state):
+    pieces = state.pieces
+    piece_list = state.piece_list
+    min_size = np.inf
+    for i in range(len(pieces)):
+        if not pieces[0][i]:
+            continue
+        piece_size = piece_list.get_piece(i).get_num_tiles()
+        if piece_size < min_size:
+            min_size = piece_size
+    return min_size
+
+
 def blokus_corners_heuristic(state, problem):
     """
     Your heuristic for the BlokusCornersProblem goes here.
@@ -259,69 +288,97 @@ def blokus_corners_heuristic(state, problem):
     board_w = state.board_w
     board_h = state.board_h
     corners = [(board_h - 1, 0), (board_h - 1, board_w - 1), (0, board_w - 1)]
-    cost = 0
     if problem.is_goal_state(state):
-        return -state.score(0)
+        return 0
     if is_kissing(state, corners):
         return np.inf
     max_min_dist = 0
+    min_piece_size = get_min_piece_size(state)
     cost = 0
+    n_covered = 1
     for corner in corners:
         if state.get_position(corner[1], corner[0]) != EMPTY:
+            n_covered += 1
             continue
+        euk_dist_from_target = lambda target: np.linalg.norm(np.array(target) - np.array(corner))
         state_corners = get_corners(state)
-        min_dist = closest_corner_distance(state_corners, corner)
-        cost += min_dist
-        if min_dist < max_min_dist:
+        sort_corners(state_corners, corner)
+        if not state_corners:
+            return np.inf
+        closest_dist = euk_dist_from_target(state_corners[0])
+        min_dist = min_piece_size + closest_dist
+        while state_corners:
+            c_corner = state_corners[0]
+            rect_valid = check_rect_valid(state, corner, c_corner)
+            if not rect_valid:
+                state_corners.pop(0)
+                continue
+            min_dist = euk_dist_from_target(c_corner)
+            break
+        if max_min_dist < min_dist:
             max_min_dist = min_dist
-
-    return max_min_dist
-
-
-class BlokusCoverProblem(SearchProblem):
-    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=[(0, 0)]):
-        self.targets = targets.copy()
-        self.expanded = 0
-        "*** YOUR CODE HERE ***"
-
-    def get_start_state(self):
-        """
-        Returns the start state for the search problem
-        """
-        return self.board
-
-    def is_goal_state(self, state):
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
-
-    def get_successors(self, state):
-        """
-        state: Search state
-
-        For a given state, this should return a list of triples,
-        (successor, action, stepCost), where 'successor' is a
-        successor to the current state, 'action' is the action
-        required to get there, and 'stepCost' is the incremental
-        cost of expanding to that successor
-        """
-        # Note that for the search problem, there is only one player - #0
-        self.expanded = self.expanded + 1
-        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for move in state.get_legal_moves(0)]
-
-    def get_cost_of_actions(self, actions):
-        """
-        actions: A list of actions to take
-
-        This method returns the total cost of a particular sequence of actions.  The sequence must
-        be composed of legal moves
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+    return max_min_dist + 3 - n_covered
 
 
 def blokus_cover_heuristic(state, problem):
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    # targets = problem.targets
+    #
+    # if problem.is_goal_state(state):
+    #     return 0
+    # if is_kissing(state, targets):
+    #     return np.inf
+    #
+    # min_dist = get_min_piece_size(state)
+    # cost = 0
+    # n_covered = 1
+    # for target in targets:
+    #     if state.get_position(target[1], target[0]) != EMPTY:
+    #         n_covered += 1
+    #         continue
+    #
+    #     state_corners = get_corners(state)
+    #     sort_corners(state_corners, target)
+    #     while state_corners:
+    #         c_corner = state_corners[0]
+    #         # rect_valid = check_rect_valid(state, target, c_corner)
+    #         # if not rect_valid:
+    #         #     state_corners.pop(0)
+    #         #     continue
+    #         euk_dist_from_corner = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
+    #         min_dist = euk_dist_from_corner(c_corner)
+    #         break
+    #     cost += min_dist
+    # board_w = state.board_w
+    # board_h = state.board_h
+    # corners = [(board_h - 1, 0), (board_h - 1, board_w - 1), (0, board_w - 1)]
+    targets = problem.targets
+    if problem.is_goal_state(state):
+        return 0
+    if is_kissing(state, targets):
+        return np.inf
+    n_covered = 1
+    max_min_dist = 0
+    min_piece_size = get_min_piece_size(state)
+    for target in targets:
+        if state.get_position(target[1], target[0]) != EMPTY:
+            n_covered += 1
+            continue
+        state_corners = get_corners(state)
+        sort_corners(state_corners, target)
+        euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
+        closest_dist = euk_dist_from_target(state_corners[0])
+        min_dist = min_piece_size + closest_dist
+        while state_corners:
+            c_corner = state_corners[0]
+            rect_valid = check_rect_valid(state, target, c_corner)
+            if not rect_valid:
+                state_corners.pop(0)
+                continue
+            min_dist = euk_dist_from_target(c_corner)
+            break
+        if max_min_dist < min_dist:
+            max_min_dist = min_dist
+    return max_min_dist + len(targets) - n_covered
 
 
 class ClosestLocationSearch:
@@ -332,6 +389,7 @@ class ClosestLocationSearch:
 
     def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=(0, 0)):
         self.targets = targets.copy()
+        self.orig_targets = targets.copy()
         self.expanded = 0
         self.board_w = board_w
         self.board_h = board_h
@@ -420,30 +478,32 @@ class ClosestLocationSearch:
 
         return flag
 
-    def move_to_next_target(self, board, target):
-        if board.state[target[0]][target[1]] != EMPTY:
-            return []
-        actions = []
-        while board.state[target[0]][target[1]] == EMPTY:
-            neighbors = self.get_successors(board)
-            if not neighbors:
-                return []
-            action = 0
-            min_dist = np.inf
-            for neighbor in neighbors:
-                all_targets = self.targets + [target]
-                if self._is_kissing(neighbor[0], all_targets):
-                    continue
-                if neighbor[0].state[target[0]][target[1]] != EMPTY:
-                    action = neighbor[1]
-                    break
+    def move_to_next_target(self):
+        actions = search.uniform_cost_search(self)
+        # if board.state[target[0]][target[1]] != EMPTY:
+        #     return []
+        # actions = []
+        # while board.state[target[0]][target[1]] == EMPTY:
+        #     neighbors = self.get_successors(board)
+        #     if not neighbors:
+        #         return []
+        #     action = 0
+        #     min_dist = np.inf
+        #     for neighbor in neighbors:
+        #         all_targets = self.targets + [target]
+        #         if self._is_kissing(neighbor[0], all_targets):
+        #             continue
+        #         if neighbor[0].state[target[0]][target[1]] != EMPTY:
+        #             action = neighbor[1]
+        #             break
+        #
+        #         tent = self._closest_corner_distance_state(neighbor[0], target)
+        #         if tent < min_dist:
+        #             min_dist = tent
+        #             action = neighbor[1]
+        #     board.add_move(0, action)
+        #     actions.append(action)
 
-                tent = self._closest_corner_distance_state(neighbor[0], target)
-                if tent < min_dist:
-                    min_dist = tent
-                    action = neighbor[1]
-            board.add_move(0, action)
-            actions.append(action)
         return actions
 
     def solve(self):
@@ -456,19 +516,18 @@ class ClosestLocationSearch:
         Probably a good way to start, would be something like this --
 
         """
-
         current_state = self.board.__copy__()
         backtrace = []
-        while self.targets:
+
+        while self.orig_targets:
             self.current_corners = self._get_corners(current_state)
-            self.targets.sort(key=self._closest_corner_distance)
-            target = self.targets.pop()
-            actions = self.move_to_next_target(current_state, target)
-            # for action in actions:
-            #     current_state.add_move(0, action)
-
+            self.orig_targets.sort(key=self._closest_corner_distance)
+            self.targets = [self.orig_targets.pop()]
+            actions = self.move_to_next_target()
+            for action in actions:
+                self.board.add_move(0, action)
             backtrace += actions
-
+        self.board = current_state
         return backtrace
 
 

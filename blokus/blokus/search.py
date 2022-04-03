@@ -149,6 +149,9 @@ def uniform_cost_search(problem):
     while not p_queue.isEmpty():
         path = state_set[p_queue.pop()]
         node = visited[path[-1]]
+        if problem.is_goal_state(node[0]):
+            sol = get_move_list(path, visited)[1:]
+            return sol
         for son in problem.get_successors(node[0]):
             if son and hash(son) not in visited_set.keys():
                 n = len(visited)
@@ -160,9 +163,7 @@ def uniform_cost_search(problem):
                 new_path.append(n)
                 state_set[hash(son_node)] = new_path
                 p_queue.push(item=hash(son_node), priority=cost)
-            if problem.is_goal_state(son[0]):
-                sol = get_move_list(new_path, visited)[1:]
-                return sol
+
     return []
 
 
