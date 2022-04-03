@@ -156,32 +156,13 @@ class BlokusCoverProblem(SearchProblem):
         return total_cost
 
 
-def blokus_cover_heuristic(state, problem):
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-
-
 def calc_piece_size(piece):
-    # piece = son[1].piece
     x_list = piece.x
     y_list = piece.y
     n = piece.num_tiles
     w = max(x_list) - min(x_list) + 1
     h = max(y_list) - min(y_list) + 1
     return max(w, h), min(w, h)
-
-
-def optimal_distance(xy1, xy2, valid_pieces):
-    # small = min(abs(xy1[0] - xy2[0]), abs(xy1[1] - xy2[1]))
-    # big = max(abs(xy1[0] - xy2[0]), abs(xy1[1] - xy2[1]))
-    # for piece in valid_pieces:
-    #     max_x = max(piece.x) - min(piece.x) + 1
-    #     max_y = max(piece.y) - min(piece.y) + 1
-    #
-    #     if (max_x < big and max_y < small) or (max_y < big and max_x < small):
-    #         remain_dist = big - max(max_x, max_y)
-    #         return piece.get_num_tiles() + remain_dist
-    return np.linalg.norm(np.array(xy1) - np.array(xy2))
 
 
 def get_corners(state):
@@ -191,17 +172,6 @@ def get_corners(state):
             if state.check_tile_legal(0, x, y) and state.check_tile_attached(0, x, y):
                 corners.append((x, y))
     return corners
-
-
-def closest_corner(state_corners, target):
-    euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
-    val = min(state_corners, key=euk_dist_from_target)
-    return val
-
-
-def closest_corner_distance(state_corners, target):
-    euk_dist_from_target = lambda corner: np.linalg.norm(np.array(target) - np.array(corner))
-    return euk_dist_from_target(closest_corner(state_corners, target))
 
 
 def is_point_in_board(state, x, y):
@@ -538,7 +508,14 @@ class MiniContestSearch:
 
     def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=(0, 0)):
         self.targets = targets.copy()
-        "*** YOUR CODE HERE ***"
+        self.orig_targets = targets.copy()
+        self.expanded = 0
+        self.board_w = board_w
+        self.board_h = board_h
+        self.board = Board(board_w, board_h, 1, piece_list, starting_point)
+        self.current_corners = []
+        self.piece_list = piece_list
+        self.starting_point = starting_point
 
     def get_start_state(self):
         """
@@ -546,6 +523,41 @@ class MiniContestSearch:
         """
         return self.board
 
+    def _cover_piece(self, state, piece):
+        if state[piece[0]][piece[1]] == -1:
+            return False
+        return True
+
+    def is_goal_state(self, state):
+        for target in self.targets:
+            if not self._cover_piece(state.state, target):
+                return False
+        return True
+
+    def get_successors(self, state):
+        """
+        state: Search state
+        For a given state, this should return a list of triples,
+        (successor, action, stepCost), where 'successor' is a
+        successor to the current state, 'action' is the action
+        required to get there, and 'stepCost' is the incremental
+        cost of expanding to that successor
+        """
+        # Note that for the search problem, there is only one player - #0
+        self.expanded = self.expanded + 1
+        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for move in state.get_legal_moves(0)]
+
+    def get_cost_of_actions(self, actions):
+        """
+        actions: A list of actions to take
+        This method returns the total cost of a particular sequence of actions.  The sequence must
+        be composed of legal moves
+        """
+        total_cost = 0
+        for action in actions:
+            total_cost += action.pieces.get_num_tiles()
+        return total_cost
+
     def solve(self):
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        back_trace = search.a_star_search(self, blokus_cover_heuristic)
+        return back_trace
